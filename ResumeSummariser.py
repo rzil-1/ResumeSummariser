@@ -3,6 +3,12 @@ from phi.model.google import Gemini
 import PyPDF2
 from dotenv import load_dotenv
 import os
+import json
+
+# Read JSON from a file
+with open('skills.json', 'r') as file:
+    json_variable = json.load(file)
+
 
 # Load environment variables
 load_dotenv()
@@ -14,7 +20,7 @@ def extract_text_from_pdf(file_path):
         text = ''.join([page.extract_text() for page in reader.pages])
     return text
 
-class ResumeBuilder:
+class QuestionGenerator:
     def __init__(self, file_path, role, company):
         """Initialize with resume content, role, and company."""
         self.resume = extract_text_from_pdf(file_path)
@@ -92,14 +98,14 @@ class ResumeBuilder:
     def generate_interview_questions(self):
         """Generate interview questions based on keyword, depth, and skill analyses."""
         keywords = self.analyze_keywords()
-        depth_analysis = self.analyze_depth(keywords)
-        skill_analysis = self.analyze_skills()
+        self.depth_analysis = self.analyze_depth(keywords)
+        self.skill_analysis = self.analyze_skills()
         prompt = (
             f"You are an experienced and highly skilled interviewer representing the company: {self.company}."
             f"The user's resume content is provided as follows: {self.resume}."
             f"The target role for the user is: {self.role}."
-            f"The {depth_analysis} provides detailed insights into the relevant concepts and sub-concepts that need to be focused on during the interview."
-            f"The {skill_analysis} outlines the necessity and relevance of each skill, along with their associated subtopics, based on the requirements of the company and the target role."
+            f"The {self.depth_analysis} provides detailed insights into the relevant concepts and sub-concepts that need to be focused on during the interview."
+            f"The {self.skill_analysis} outlines the necessity and relevance of each skill, along with their associated subtopics, based on the requirements of the company and the target role."
             "Your task is to generate 10 well-structured interview questions, ensuring the following:"
             "1. **Question Depth**:"
             "   - The first two questions should be medium-level, focusing on moderately detailed subtopics."
@@ -124,12 +130,100 @@ class ResumeBuilder:
 
         run: RunResponse = self.agent.run(prompt)
         return run.content
+    
+    def generate_theoretical_interview_questions(self):
+        """Generate Theoretical interview questions based on keyword, depth, and skill analyses."""
+        prompt = (
+            f"You are an experienced and highly skilled interviewer representing the company: {self.company}."
+            f"The user's resume content is provided as follows: {self.resume}."
+            f"The {self.depth_analysis} provides detailed insights into the relevant concepts and sub-concepts extracted from the user's resume."
+            "Your task is to create exactly 5 explanatory interview questions. Each question should be simple, clear, and encourage the candidate to articulate their understanding in an explanatory manner. Follow these guidelines:"
+            "1. **Scope and Sub-concepts:**"
+            "   - Each question should focus on a single sub-concept or combine a maximum of two logically related sub-concepts."
+            "   - Avoid overly niche or unrelated sub-concept combinations."
+            "2. **Explanatory Focus:**"
+            "   - Questions should primarily aim for explanations, such as 'Explain X,' 'What is the effect of X on Y,' or 'How does X relate to Y?'"
+            "   - Keep the phrasing simple, avoiding jargon or intimidating language."
+            "3. **Accessibility:**"
+            "   - Ensure questions are easy to understand and approachable, designed to help candidates explain concepts without unnecessary complexity."
+            "   - Avoid technical implementation or problem-solving questions."
+            "4. **Depth and Clarity:**"
+            "   - Maintain a balance between general and moderately detailed questions."
+            "   - Ensure the questions provide room for thoughtful, structured responses."
+            "5. **Structured Format:**"
+            "   - Provide exactly 5 questions, numbered and clearly phrased."
+            "   - Each question should explicitly mention the sub-concept(s) being addressed."
+            "   - Example format:"
+            "     1. [Explain how sub-concept A influences sub-concept B.]"
+            "     2. [What is the role of sub-concept C in achieving goal D?]"
+            "     ..."
+            "     5. [Describe the relationship between sub-concepts Y and Z.]"
+            "6. **Example Questions:**"
+            "   - For sub-concepts 'Machine Learning' and 'Data Quality,' a question might be:"
+            "     'Explain how the quality of data affects the performance of machine learning models.'"
+            "   - For sub-concepts 'Project Management' and 'Stakeholder Communication,' a question might be:"
+            "     'What is the role of effective stakeholder communication in successful project management?'"
+            "   - For a single sub-concept like 'Encryption,' a question might be:"
+            "     'What is encryption, and why is it important in modern cybersecurity practices?'"
+            "Your goal is to craft 5 simple, explanatory questions that allow candidates to provide clear and thoughtful explanations, ensuring the questions are approachable, logical, and aligned with the sub-concepts provided in the depth analysis."
+        )
+        run: RunResponse = self.agent.run(prompt)
+        return run.content
+    
+    def generate_skill_questions(self):
+        """Generate interview questions based on the skills."""
+        prompt = (
+            f"You are an experienced and highly skilled interviewer representing the company: {self.company}."
+            f"Your task is to create a diverse and comprehensive set of skill-based interview questions by leveraging the skills "
+            f"provided in the {self.skill_analysis}, while using the structure and format of the {json_variable} as a reference. "
+            f"The questions should assess the candidate's understanding, application, and problem-solving abilities across the identified skills."
+            
+            "1. **Primary Focus on Skill Analysis:**"
+            "   - Use the skills and their associated subtopics from the {self.skill_analysis} as the foundation for crafting questions."
+            "   - Each question should focus on specific skills or combinations of related skills that are directly relevant to the role."
+            
+            "2. **Using JSON as a Reference:**"
+            "   - The {json_variable} is provided as a reference for the structure and format of the questions."
+            "   - While adhering to this structure, ensure the content and focus of the questions are entirely derived from the {self.skill_analysis}."
+
+            "3. **Question Variety and Depth:**"
+            "   - Generate a mix of explanatory and application-based questions to evaluate both theoretical understanding and practical expertise."
+            "   - Incorporate varying levels of complexity, with an emphasis on clear and concise questions that are easy to articulate."
+            "   - Examples include: "
+            "       - 'Explain the role of [Skill] in achieving [Objective].'"
+            "       - 'What impact does [Skill A] have on [Outcome B]?'"
+            "       - 'Describe how you would use [Skill C] to address [Specific Scenario].'"
+            "       - 'Compare [Skill D] and [Skill E] in the context of [Problem].'"
+            
+            "4. **Logical and Targeted Approach:**"
+            "   - Combine at most two subconcepts per question to maintain clarity and focus."
+            "   - Ensure that questions are logically sequenced, transitioning smoothly from medium-depth to in-depth inquiries."
+            "   - Avoid overly generic or excessively complex questions; focus on relevance and articulation."
+
+            "5. **Practical and Contextual Relevance:**"
+            "   - Frame some questions around practical scenarios or use cases to assess the candidate’s ability to apply their skills effectively."
+            "   - Examples: "
+            "       - 'How would you approach [Problem] using [Skill] in [Context]?'"
+            "       - 'Explain how [Skill] can be used to optimize [Process or Outcome].'"
+
+            "6. **Comprehensive Coverage:**"
+            "   - Ensure the set of questions reflects a diverse range of skills and subtopics from the {self.skill_analysis}."
+            "   - Avoid focusing disproportionately on a single skill unless explicitly required by the role."
+
+            "Your ultimate objective is to generate five well-structured, varying, and explanatory skill-based interview questions. "
+            "While using {json_variable} for structural reference, ensure that all questions are rooted in the skills identified in the {self.skill_analysis}."
+        )
+        run: RunResponse = self.agent.run(prompt)
+        return run.content
+    
+
 
 if __name__ == "__main__":
-    builder = ResumeBuilder(
+    builder = QuestionGenerator(
         r"C:\Users\manda\OneDrive\Desktop\Kunaal_Joshi-resume.pdf",
         "associate",
         "Boston Consulting Group"
     )
     questions = builder.generate_interview_questions()
-    print(questions)
+    skill_questions = builder.generate_skill_questions()
+    print(skill_questions)
